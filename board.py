@@ -85,18 +85,16 @@ class Board:
             self.pieceSelected = piece
             return False
 
-        # Piece already selected, but the clicked position is not a valid move or it's the player's own piece
-        if self.isPieceSelected and piece != EMPTY and piece.color == curr_player_color:
-            self.pieceSelected.select(False)  # Deselect the currently selected piece
-            piece.select()  # Select the new piece
-            self.pieceSelected = piece
-            return False
-
-
-
         # Piece already selected, check if valid move
         if self.isPieceSelected:
-            possible_moves = self.possible_moves(curr_player_color)
+            possible_simple_moves, possible_jump_moves = self.possible_moves(curr_player_color)
+
+            # for jump move in possible_jump_moves:
+                # if jump_move.start == self.pieceSelected and jump_move.landings[0].row == row and jump_move.landings[0].col == col
+                    # self.jumpSequenceActivated = True
+                    # self.previousJumpSequence = [jump_move.start, jump_move.landings[0]]
+                    # self.possibleJumpMoves = possible_jump_moves
+                    # self.isPieceSelected = False
 
             return False
             isValid, adversaries = self.is_valid_move(self.pieceSelected, piece)
@@ -107,6 +105,17 @@ class Board:
                 self.isPieceSelected = False
                 self.pieceSelected.select(False)  # Deselect the piece
                 return True
+            
+        # if self.jumpSequenceActivated:
+            # for jump_move in self.possibleJumpMoves:
+                # if #startofjumpmove# == previousJumpSequence + (row, col)
+                    # previousJumpSequence = previousJumpSequence + (row, col)
+                    #if len(previousJumpSequence) == len(jump_move):
+                        #execute move
+                    # return True
+            # print(INVALID MOVE)
+            # return False
+
 
     def possible_moves(self, color) -> list:
         simple_moves = []
@@ -118,7 +127,14 @@ class Board:
                 if piece == EMPTY:
                     continue
                 if piece.color == color:
-                    self.get_valid_moves_for_piece(piece)
+                    [current_simple_moves, current_jump_moves] = self.get_valid_moves_for_piece(piece)
+                    simple_moves.append(current_simple_moves)
+                    jump_moves.append(current_jump_moves)
+
+        if(len(jump_moves) > 0):
+            simple_moves = []
+
+        return simple_moves, jump_moves
 
 
 
@@ -141,12 +157,16 @@ class Board:
     def get_simple_moves_for_piece(self, piece, directions):
         simple_moves = []
         for direction in directions:
-            piece_to_check = self.board[piece.row + direction[0]][piece.col + direction[1]]
-            if not self.is_position_on_board(piece_to_check.row, piece_to_check.col):
+            new_row = piece.row + direction[0]
+            new_col = piece.col + direction[1]
+            if not self.is_position_on_board(new_row, new_col):
                 continue
 
+            piece_to_check = self.board[new_row][new_col]
+
+
             if piece_to_check == EMPTY:
-                simple_moves.add([piece, piece_to_check])
+                simple_moves.append([piece, piece_to_check])
         return simple_moves
     
     def get_jump_moves_for_piece(self, piece, directions, total_start, previous_landings, previously_captured_pieces):
@@ -154,9 +174,12 @@ class Board:
         jump_moves = []
         recursion = False
         for direction in directions:
-            piece_to_check = self.board[piece.row + direction[0]][piece.col + direction[1]]
-            if not self.is_position_on_board(piece_to_check.row, piece_to_check.col):
+            new_row = piece.row + direction[0]
+            new_col = piece.col + direction[1]
+            if not self.is_position_on_board(new_row, new_col):
                 continue
+
+            piece_to_check = self.board[new_row][new_col]
 
             if piece_to_check != EMPTY and piece_to_check.color != piece.color:
                 possible_landing = self.board[piece_to_check.row + direction[0]][piece_to_check.col + direction[1]]
@@ -168,8 +191,8 @@ class Board:
                     previously_captured_pieces_new = previously_captured_pieces.copy()
                     previously_captured_pieces_new.append(piece_to_check)
 
-                    simulated_board = self.simulate_jump(self, piece, possible_landing, piece_to_check)
-                    jump_moves.append(simulated_board.get_jump_moves_for_piece(simulated_board, simulated_board[possible_landing.row][possible_landing.col], total_start, previous_landings_new, previously_captured_pieces_new))
+                    simulated_board = self.simulate_jump(piece, possible_landing, piece_to_check)
+                    jump_moves.append(simulated_board.get_jump_moves_for_piece(simulated_board[possible_landing.row][possible_landing.col], total_start, previous_landings_new, previously_captured_pieces_new))
         
         if recursion or len(previous_landings) == 0:
             return jump_moves
@@ -182,9 +205,12 @@ class Board:
     def get_valid_moves_for_piece(self, piece):
         print(f'checking adjancent positions of : {piece.row}, {piece.col}')
 
-        directions = self.get_directions_for_piece(self, piece)
-        simple_moves = self.get_simple_moves_for_piece(self, piece, directions)
-        jump_moves = self.get_jump_moves_for_piece(self, piece, directions, piece, [])
+        directions = self.get_directions_for_piece(piece)
+        simple_moves = self.get_simple_moves_for_piece(piece, directions)
+        jump_moves = self.get_jump_moves_for_piece(piece, directions, piece, [],[])
+
+        print("Possible simple moves: " + str(len(simple_moves)))
+        print("Possible jump moves: " + str(len(jump_moves))) 
 
         return [simple_moves, jump_moves]
 
