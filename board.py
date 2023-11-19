@@ -1,4 +1,5 @@
 from piece import *
+from jumpmove import *
 from copy import deepcopy
 import time
 
@@ -11,13 +12,10 @@ class Board:
         self.n_black_pieces = 12
         self.n_white_pieces = 12
 
-        self.white_pieces = []
-        self.black_pieces = []
-
 
 
     # create the internal board
-    def create_board(self) -> list[Piece]:
+    def create_board(self):
         board = []
 
         for _ in range(ROWS):
@@ -120,21 +118,28 @@ class Board:
                 if piece == EMPTY:
                     continue
                 if piece.color == color:
-                    self.is_move_valid(piece)
+                    self.get_valid_moves_for_piece(piece)
 
-    def is_move_valid(self, piece):
+
+
+    def simulate_jump(previous_board, start, end, captured_stone):
+        simulated_board = previous_board.copy()
+
+        simulated_board[start.row][start.col] = EMPTY
+        simulated_board[captured_stone.row][captured_stone.col] = EMPTY
+        simulated_board[end.row][end.col] = end
+
+        return simulated_board
+
+    def get_directions_for_piece(self, piece):
         y_direction = 1 if piece.color == BLACK else -1
-        print(f'checking adjancent positions of : {piece.row}, {piece.col}')
-
-        simple_moves = []
-        jump_moves = []
-
-
         directions = [[y_direction, 1], [y_direction, -1]] 
         if piece.king: 
-            directions = [[y_direction, 1], [y_direction, -1],
-                          [-y_direction, 1], [-y_direction, -1]]
-            
+            directions.append([[-y_direction, 1], [-y_direction, -1]])
+        return directions
+    
+    def get_simple_moves_for_piece(self, piece, directions):
+        simple_moves = []
         for direction in directions:
             piece_to_check = self.board[piece.row + direction[0]][piece.col + direction[1]]
             if not self.is_position_on_board(piece_to_check.row, piece_to_check.col):
@@ -142,15 +147,46 @@ class Board:
 
             if piece_to_check == EMPTY:
                 simple_moves.add([piece, piece_to_check])
-            elif piece_to_check.color == piece.color:
-                continue
-            else:
-                jump_to_check = self.board[piece_to_check + direction[0]][piece_to_check + direction[1]]
-                if jump_to_check == EMPTY:
-                    recursive_check()
-                else:
-                    continue
+        return simple_moves
+    
+    def get_jump_moves_for_piece(self, piece, directions, total_start, previous_landings, previously_captured_pieces):
 
+        jump_moves = []
+        recursion = False
+        for direction in directions:
+            piece_to_check = self.board[piece.row + direction[0]][piece.col + direction[1]]
+            if not self.is_position_on_board(piece_to_check.row, piece_to_check.col):
+                continue
+
+            if piece_to_check != EMPTY and piece_to_check.color != piece.color:
+                possible_landing = self.board[piece_to_check.row + direction[0]][piece_to_check.col + direction[1]]
+                if possible_landing == EMPTY:
+                    recursion = True
+                    previous_landings_new = previous_landings.copy()
+                    previous_landings_new.append(possible_landing)
+
+                    previously_captured_pieces_new = previously_captured_pieces.copy()
+                    previously_captured_pieces_new.append(piece_to_check)
+
+                    simulated_board = self.simulate_jump(self, piece, possible_landing, piece_to_check)
+                    jump_moves.append(simulated_board.get_jump_moves_for_piece(simulated_board, simulated_board[possible_landing.row][possible_landing.col], total_start, previous_landings_new, previously_captured_pieces_new))
+        
+        if recursion or len(previous_landings) == 0:
+            return jump_moves
+        else:
+            return [Jumpmove(total_start, previous_landings, previously_captured_pieces)]
+
+
+
+    # returns two lists: List 1 contains all possible simple moves. List 2 contains all possible jump moves
+    def get_valid_moves_for_piece(self, piece):
+        print(f'checking adjancent positions of : {piece.row}, {piece.col}')
+
+        directions = self.get_directions_for_piece(self, piece)
+        simple_moves = self.get_simple_moves_for_piece(self, piece, directions)
+        jump_moves = self.get_jump_moves_for_piece(self, piece, directions, piece, [])
+
+        return [simple_moves, jump_moves]
 
 
     def is_valid_move(self, from_piece: Piece, to_piece: Piece):
