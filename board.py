@@ -71,6 +71,15 @@ class Board:
         else:
             return False
 
+    def execute_simple_move(self, start_piece, end_piece):
+        self.board[end_piece.row][end_piece.col] = Piece(end_piece.row, end_piece.col, start_piece.color, start_piece.king)
+        self.board[start_piece.row][start_piece.col] = EMPTY
+    
+    def execute_jump_move(self, start_piece, end_piece, captured_piece):
+        self.board[end_piece.row][end_piece.col] = Piece(end_piece.row, end_piece.col, start_piece.color, start_piece.king)
+        self.board[start_piece.row][start_piece.col] = EMPTY
+        self.board[captured_piece.row][captured_piece.col] = EMPTY
+
     def execute_mousepress(self, col, row, curr_player_color):
         if row is None or col is None:
             return False
@@ -87,34 +96,25 @@ class Board:
 
         # Piece already selected, check if valid move
         if self.isPieceSelected:
+
             possible_simple_moves, possible_jump_moves = self.possible_moves(curr_player_color)
+            for simple_move in possible_simple_moves:
+                start_piece = simple_move[0]
+                end_piece = simple_move[1]
+                print(str(simple_move))
+                if start_piece.row == self.pieceSelected.row and start_piece.col == self.pieceSelected.col and end_piece.row == row and end_piece.col == col:
+                    self.execute_simple_move(start_piece, end_piece)
+                    return True
 
-            # for jump move in possible_jump_moves:
-                # if jump_move.start == self.pieceSelected and jump_move.landings[0].row == row and jump_move.landings[0].col == col
-                    # self.jumpSequenceActivated = True
-                    # self.previousJumpSequence = [jump_move.start, jump_move.landings[0]]
-                    # self.possibleJumpMoves = possible_jump_moves
-                    # self.isPieceSelected = False
+            print(str(len(possible_jump_moves)) + " many jump moves")
+            for jump_move in possible_jump_moves:
+                print(str(jump_move))
+                start_piece = jump_move[0]
+                end_piece = jump_move[1]
+                captured_piece = jump_move[2]
+                if start_piece.row == self.pieceSelected.row and start_piece.col == self.pieceSelected.col and end_piece.row == row and end_piece.col == col:
+                    self.execute_jump_move(start_piece, end_piece, captured_piece)
 
-            return False
-            isValid, adversaries = self.is_valid_move(self.pieceSelected, piece)
-            if isValid:
-                self.move(col, row)  # Move the piece to the new position
-                #TODO: implement this
-                self.remove(adversaries)
-                self.isPieceSelected = False
-                self.pieceSelected.select(False)  # Deselect the piece
-                return True
-            
-        # if self.jumpSequenceActivated:
-            # for jump_move in self.possibleJumpMoves:
-                # if #startofjumpmove# == previousJumpSequence + (row, col)
-                    # previousJumpSequence = previousJumpSequence + (row, col)
-                    #if len(previousJumpSequence) == len(jump_move):
-                        #execute move
-                    # return True
-            # print(INVALID MOVE)
-            # return False
 
 
     def possible_moves(self, color) -> list:
@@ -127,12 +127,16 @@ class Board:
                 if piece == EMPTY:
                     continue
                 if piece.color == color:
-                    [current_simple_moves, current_jump_moves] = self.get_valid_moves_for_piece(piece)
-                    simple_moves.append(current_simple_moves)
-                    jump_moves.append(current_jump_moves)
+                    current_simple_moves, current_jump_moves = self.get_valid_moves_for_piece(piece)
+                    simple_moves.extend(current_simple_moves)
+                    jump_moves.extend(current_jump_moves)
 
         if(len(jump_moves) > 0):
             simple_moves = []
+
+        print(str(len(simple_moves)) + " many simple moves")
+        print(str(len(jump_moves)) + " many jump moves")
+
 
         return simple_moves, jump_moves
 
@@ -166,13 +170,12 @@ class Board:
 
 
             if piece_to_check == EMPTY:
-                simple_moves.append([piece, piece_to_check])
+                simple_moves.append([piece, Piece(new_row, new_col, piece.color, piece.king)])
         return simple_moves
     
-    def get_jump_moves_for_piece(self, piece, directions, total_start, previous_landings, previously_captured_pieces):
+    def get_jump_moves_for_piece(self, piece, directions):
 
         jump_moves = []
-        recursion = False
         for direction in directions:
             new_row = piece.row + direction[0]
             new_col = piece.col + direction[1]
@@ -184,20 +187,10 @@ class Board:
             if piece_to_check != EMPTY and piece_to_check.color != piece.color:
                 possible_landing = self.board[piece_to_check.row + direction[0]][piece_to_check.col + direction[1]]
                 if possible_landing == EMPTY:
-                    recursion = True
-                    previous_landings_new = previous_landings.copy()
-                    previous_landings_new.append(possible_landing)
-
-                    previously_captured_pieces_new = previously_captured_pieces.copy()
-                    previously_captured_pieces_new.append(piece_to_check)
-
-                    simulated_board = self.simulate_jump(piece, possible_landing, piece_to_check)
-                    jump_moves.append(simulated_board.get_jump_moves_for_piece(simulated_board[possible_landing.row][possible_landing.col], total_start, previous_landings_new, previously_captured_pieces_new))
+                    jump_moves.append([piece, possible_landing, piece_to_check])
         
-        if recursion or len(previous_landings) == 0:
-            return jump_moves
-        else:
-            return [Jumpmove(total_start, previous_landings, previously_captured_pieces)]
+        return jump_moves
+        
 
 
 
@@ -207,12 +200,12 @@ class Board:
 
         directions = self.get_directions_for_piece(piece)
         simple_moves = self.get_simple_moves_for_piece(piece, directions)
-        jump_moves = self.get_jump_moves_for_piece(piece, directions, piece, [],[])
+        jump_moves = self.get_jump_moves_for_piece(piece, directions)
 
         print("Possible simple moves: " + str(len(simple_moves)))
         print("Possible jump moves: " + str(len(jump_moves))) 
 
-        return [simple_moves, jump_moves]
+        return simple_moves, jump_moves
 
 
     def is_valid_move(self, from_piece: Piece, to_piece: Piece):

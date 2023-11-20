@@ -27,29 +27,22 @@ class Checkers:
         self.fps = FPS
         self.board = board.Board(self.screen)
         self.turn = BLACK
-        self.MOUSEBUTTONUP = False
         self.KEYUP = False
 
     def play(self):
         while self.running:
-            self.get_events()
-            if self.MOUSEBUTTONUP:
-                movex, movey = self.get_square_clicked(self.pos[0], self.pos[1])
-                move = self.board.execute_mousepress(movex, movey, self.turn)
-                if move:
-                    self.turn = BLACK if self.turn == WHITE else WHITE
-
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    self.running = False
+                    sys.exit()
+                if event.type == pygame.MOUSEBUTTONUP:
+                    movex, movey = self.get_square_clicked(event.pos[0], event.pos[1])
+                    move = self.board.execute_mousepress(movex, movey, self.turn)
+                    if move:
+                        self.turn = BLACK if self.turn == WHITE else WHITE
             self.board.draw_board()
             self.clock.tick(self.fps)
-    
-    def get_events(self):
-        for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                self.running = False
-                sys.exit()
-            if event.type == pygame.MOUSEBUTTONUP:
-                self.MOUSEBUTTONUP = True
-                self.pos = event.pos
+      
 
     def get_square_clicked(self, mousex, mousey):
         for x in range(ROWS):
