@@ -29,9 +29,15 @@ class Checkers:
         self.turn = BLACK
         self.KEYUP = False
 
+    def check_win_condition(self):
+        simple_moves, jump_moves = self.board.possible_moves(self.turn)
+        if not simple_moves and not jump_moves:
+            print("Someone won!!!")
+        
     def play(self):
         while self.running:
             for event in pygame.event.get():
+                self.check_win_condition()
                 if event.type == pygame.QUIT:
                     self.running = False
                     sys.exit()
@@ -40,6 +46,7 @@ class Checkers:
                     move = self.board.execute_mousepress(movex, movey, self.turn)
                     if move:
                         self.turn = BLACK if self.turn == WHITE else WHITE
+
             self.board.draw_board()
             self.clock.tick(self.fps)
       

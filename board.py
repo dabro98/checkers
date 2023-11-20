@@ -9,8 +9,7 @@ class Board:
         self.board = self.create_board()
         self.isPieceSelected = False
         self.pieceSelected = EMPTY
-        self.n_black_pieces = 12
-        self.n_white_pieces = 12
+        self.lockSelection = False
 
 
 
@@ -25,10 +24,10 @@ class Board:
             for col in range(COLS):
                 if col % 2 == ((row + 1) % 2):
                     if row < 3:
-                        board[row][col] = Piece(col, row, BLACK)
+                        board[row][col] = Piece(row, col, BLACK)
 
                     elif row > 4:
-                        board[row][col] = Piece(col, row, WHITE)
+                        board[row][col] = Piece(row, col, WHITE)
         print(board)
         return board
 
@@ -41,9 +40,9 @@ class Board:
                 piece = self.board[row][col]
                 if piece != EMPTY:
                     if piece.color == WHITE:
-                        self.white_pieces += 1
+                        self.n_white_pieces += 1
                     else:
-                        self.black_pieces += 1
+                        self.n_black_pieces += 1
 
     # draw current state of the board
     def draw_board(self):
@@ -72,13 +71,21 @@ class Board:
             return False
 
     def execute_simple_move(self, start_piece, end_piece):
-        self.board[end_piece.row][end_piece.col] = Piece(end_piece.row, end_piece.col, start_piece.color, start_piece.king)
+        print(f"moving piece: {start_piece.row}{start_piece.col} to {end_piece.row}{end_piece.col}")
+        self.board[end_piece.row][end_piece.col] = end_piece
         self.board[start_piece.row][start_piece.col] = EMPTY
+        if end_piece.row == ROWS-1 or end_piece.row == 0:
+            end_piece.make_king()
+
+            
     
     def execute_jump_move(self, start_piece, end_piece, captured_piece):
-        self.board[end_piece.row][end_piece.col] = Piece(end_piece.row, end_piece.col, start_piece.color, start_piece.king)
+        self.board[end_piece.row][end_piece.col] = end_piece
         self.board[start_piece.row][start_piece.col] = EMPTY
-        self.board[captured_piece.row][captured_piece.col] = EMPTY
+        self.board[captured_piece.row][captured_piece.col] = EMPTY        
+        
+        if end_piece.row == ROWS-1 or end_piece.row == 0:
+            end_piece.make_king()
 
     def execute_mousepress(self, col, row, curr_player_color):
         if row is None or col is None:
@@ -96,15 +103,21 @@ class Board:
 
         # Piece already selected, check if valid move
         if self.isPieceSelected:
-
+            move_finished = False
+            another_jump_mandatory = False
             possible_simple_moves, possible_jump_moves = self.possible_moves(curr_player_color)
             for simple_move in possible_simple_moves:
                 start_piece = simple_move[0]
                 end_piece = simple_move[1]
-                print(str(simple_move))
+                print(f'trying to move piece: {self.pieceSelected.row}, {self.pieceSelected.col} to {row}, {col}' )
+                print(f'comparing to move: {start_piece.row}, {start_piece.col} to {end_piece.row} {end_piece.col}')
+                print(start_piece.row == self.pieceSelected.row)
+                print(start_piece.col == self.pieceSelected.col)
+                print(end_piece.row == row)
+                print(end_piece.col == col)
                 if start_piece.row == self.pieceSelected.row and start_piece.col == self.pieceSelected.col and end_piece.row == row and end_piece.col == col:
                     self.execute_simple_move(start_piece, end_piece)
-                    return True
+                    move_finished = True
 
             print(str(len(possible_jump_moves)) + " many jump moves")
             for jump_move in possible_jump_moves:
@@ -114,7 +127,24 @@ class Board:
                 captured_piece = jump_move[2]
                 if start_piece.row == self.pieceSelected.row and start_piece.col == self.pieceSelected.col and end_piece.row == row and end_piece.col == col:
                     self.execute_jump_move(start_piece, end_piece, captured_piece)
+                    directions = self.get_directions_for_piece(end_piece)
+                    possible_additional_jumps = self.get_jump_moves_for_piece(end_piece, directions)
+                    if possible_additional_jumps:
+                        move_finished = False
+                        self.pieceSelected = end_piece
+                        end_piece.select(True)
+                        self.lockSelection = True
+                    else:
+                        move_finished = True
+                        self.lockSelection = False
 
+
+            if not self.lockSelection:
+                self.isPieceSelected = False
+                self.pieceSelected.select(False)
+                self.pieceSelected = EMPTY
+
+            return move_finished
 
 
     def possible_moves(self, color) -> list:
@@ -141,21 +171,11 @@ class Board:
         return simple_moves, jump_moves
 
 
-
-    def simulate_jump(previous_board, start, end, captured_stone):
-        simulated_board = previous_board.copy()
-
-        simulated_board[start.row][start.col] = EMPTY
-        simulated_board[captured_stone.row][captured_stone.col] = EMPTY
-        simulated_board[end.row][end.col] = end
-
-        return simulated_board
-
     def get_directions_for_piece(self, piece):
         y_direction = 1 if piece.color == BLACK else -1
         directions = [[y_direction, 1], [y_direction, -1]] 
         if piece.king: 
-            directions.append([[-y_direction, 1], [-y_direction, -1]])
+            directions.extend([[-y_direction, 1], [-y_direction, -1]])
         return directions
     
     def get_simple_moves_for_piece(self, piece, directions):
@@ -181,13 +201,17 @@ class Board:
             new_col = piece.col + direction[1]
             if not self.is_position_on_board(new_row, new_col):
                 continue
-
             piece_to_check = self.board[new_row][new_col]
 
             if piece_to_check != EMPTY and piece_to_check.color != piece.color:
+                landing_row = piece_to_check.row + direction[0]
+                landing_col = piece_to_check.col + direction[1]
+                if not self.is_position_on_board(landing_row, landing_col):
+                    continue
                 possible_landing = self.board[piece_to_check.row + direction[0]][piece_to_check.col + direction[1]]
+
                 if possible_landing == EMPTY:
-                    jump_moves.append([piece, possible_landing, piece_to_check])
+                    jump_moves.append([piece, Piece(landing_row, landing_col, piece.color, piece.king), piece_to_check])
         
         return jump_moves
         
@@ -222,9 +246,3 @@ class Board:
 
 
         return True
-
-
-    def move(self, col, row):
-        self.board[row][col] = self.board[self.pieceSelected.row][self.pieceSelected.col]
-        self.board[self.pieceSelected.row][self.pieceSelected.col] = EMPTY
-        self.pieceSelected.move(col, row)

@@ -2,7 +2,7 @@ import pygame
 from main import *
 
 class Piece:
-    def __init__(self, col, row, color, king=False):
+    def __init__(self, row, col, color, king=False):
         self.row = row
         self.col = col
         self.color = color
@@ -15,7 +15,7 @@ class Piece:
     def select(self, selected = True):
         self.selected = selected
 
-    def move(self, movex, movey):
+    def move(self, movey, movex):
         self.col = movex
         self.row = movey
         self.selected = False
