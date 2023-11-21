@@ -1,4 +1,3 @@
-import pygame
 from main import *
 
 class Piece:
@@ -32,7 +31,7 @@ class Piece:
         pygame.draw.circle(screen, self.color, (pixelCol, pixelRow), SQUARESIZE//2-15)
 
         if self.king:
-            font = pygame.font.Font(None, 40)  # Define font and size
-            text = font.render('K', True, BLACK if self.color == WHITE else WHITE)  # Render 'K' in contrasting color
-            text_rect = text.get_rect(center=(pixelCol, pixelRow))  # Set 'K' position to center of the piece
-            screen.blit(text, text_rect)  # Draw 'K' onto the screen
+            font = pygame.font.Font(None, 40)
+            text = font.render('K', True, BLACK if self.color == WHITE else WHITE)
+            text_rect = text.get_rect(center=(pixelCol, pixelRow))
+            screen.blit(text, text_rect)
