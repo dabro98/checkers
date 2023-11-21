@@ -105,7 +105,7 @@ class Board:
                     self.execute_jump_move(start_piece, end_piece, captured_piece)
                     directions = self.get_directions_for_piece(end_piece)
                     possible_additional_jumps = self.get_jump_moves_for_piece(end_piece, directions)
-                    if possible_additional_jumps: #necessary look-ahead, since the player must take the next jumo, if there is one
+                    if possible_additional_jumps: #necessary look-ahead, since the player must take the next jump, if there is one
                         move_finished = False
                         self.pieceSelected = end_piece
                         end_piece.select(True)
@@ -159,7 +159,6 @@ class Board:
                 continue
 
             piece_to_check = self.board[new_row][new_col]
-
 
             if piece_to_check == EMPTY:
                 simple_moves.append([piece, Piece(new_row, new_col, piece.color, piece.king)])

@@ -21,14 +21,14 @@ class Checkers:
         self.clock = pygame.time.Clock()
         self.fps = FPS
         self.board = board.Board(self.screen)
-        self.turn = WHITE
+        self.turn = BLACK
         self.KEYUP = False
         self.caretaker = caretaker.Caretaker(memento.Memento(deepcopy(self.board.board), self.turn))
 
     def check_win_condition(self):
         simple_moves, jump_moves = self.board.possible_moves(self.turn)
         if not simple_moves and not jump_moves:
-            return "WHITE" if self.turn is WHITE else "BLACK"
+            return "BLACK" if self.turn is WHITE else "WHITE"
 
     def draw_start_screen(self):
         self.screen.fill(LIGHTBROWN)
@@ -37,11 +37,11 @@ class Checkers:
         self.screen.blit(title, (260, 50))
 
         instructions = [
-            "Press 'L' to load game state",
-            "Press 'S' to save the current game state",
-            "Press ENTER to start a game",
-            "Press LEFT ARROW to undo the last move",
-            "Press RIGHT ARROW to redo the last move"
+            "Press ENTER to start a game - always",
+            "Press LEFT ARROW to undo the last move - always",
+            "Press RIGHT ARROW to redo the last move - always",
+            "Press 'L' to load game - only on start screen",
+            "Press 'S' to save the current game - always"
         ]
 
         y_offset = 150
@@ -54,25 +54,25 @@ class Checkers:
 
     def draw_win(self, winner):
         self.screen.fill(LIGHTBROWN)
-        
+            
         winner_text = self.font.render(f"Player {winner} wins!", True, BLACK)
         self.screen.blit(winner_text, (250, 200))
 
         restart_text = self.font.render("Press ENTER to quit", True, DARKBROWN)
         self.screen.blit(restart_text, (250, 300))
-
-        pygame.display.flip()
-
-
+        pygame.display.update()
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN:
+                        return
 
     def play(self):
         while self.running:
+            win = self.check_win_condition()
+            if win:
+                return win
             for event in pygame.event.get():
-                #TODO: draw the fucking win page and stop the game bruh
-                win = self.check_win_condition()
-                if win:
-                    print("return win")
-                    return win
                 if event.type == pygame.QUIT:
                     self.running = False
                     sys.exit()
@@ -102,6 +102,32 @@ class Checkers:
             self.board.draw_board()
             self.clock.tick(self.fps)
 
+    def wrap_play(self):
+        self.draw_win(self.play())
+
+    def start(self):
+        self.draw_start_screen()
+        while True:
+            for event in pygame.event.get():
+                if event.type == pygame.QUIT:
+                    pygame.quit()
+                    sys.exit()
+                elif event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_RETURN:
+                        print("Starting new game...") 
+                        self.wrap_play()
+                        return
+                    elif event.key == pygame.K_l:
+                        print("Loading game state...") 
+                        self.load_game_state()
+                        memento = self.caretaker.get_current_memento()
+                        self.board.board = deepcopy(memento.board)
+                        self.turn = memento.turn
+                        print("Game state loaded, starting game...")
+                        self.wrap_play()
+                        return
+            pygame.display.update()
+
     def save_game_state(self, state):
         file_name = "game_state.pkl"
 
@@ -114,31 +140,7 @@ class Checkers:
             pickle.dump(state, outp)
 
 
-    def start(self):
-        self.draw_start_screen()
-        while True:
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    pygame.quit()
-                    sys.exit()
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_RETURN:
-                        print("Starting new game...")  
-                        winner = self.play()
-                        self.draw_win(winner)
-                        return  
-                    elif event.key == pygame.K_l:
-                        print("Loading game state...") 
-                        self.load_game()
-                        memento = self.caretaker.get_current_memento()
-                        self.board.board = deepcopy(memento.board)
-                        self.turn = memento.turn
-                        print("Game state loaded, starting game...")
-                        self.play()
-            pygame.display.update()
-
-
-    def load_game(self):
+    def load_game_state(self):
         root = tk.Tk()
         root.withdraw()
         try:
@@ -155,7 +157,6 @@ class Checkers:
             print("An error occurred:", str(e))      
 
 
-
     def get_square_clicked(self, mousex, mousey):
         for x in range(ROWS):
             for y in range(COLS):
@@ -163,10 +164,6 @@ class Checkers:
                     mousey > y * SQUARESIZE and mousey < (y + 1) * SQUARESIZE:
                     return (x, y)
         return (None, None)
-
-    def resetKeys(self):  
-        self.MOUSEBUTTONUP = False
-        self.KEYUP = False
 
 def main():
     checkers = Checkers()
