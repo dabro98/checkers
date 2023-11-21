@@ -1,5 +1,4 @@
 from piece import *
-from jumpmove import *
 from copy import deepcopy
 import time
 
@@ -77,8 +76,6 @@ class Board:
         if end_piece.row == ROWS-1 or end_piece.row == 0:
             end_piece.make_king()
 
-            
-    
     def execute_jump_move(self, start_piece, end_piece, captured_piece):
         self.board[end_piece.row][end_piece.col] = end_piece
         self.board[start_piece.row][start_piece.col] = EMPTY

@@ -1,6 +1,8 @@
 import pygame
 import board
 import sys
+#from caretaker import Caretaker
+#from memento import Memento
 
 # Constants
 WIDTH, HEIGHT = 800, 800
@@ -28,6 +30,8 @@ class Checkers:
         self.board = board.Board(self.screen)
         self.turn = BLACK
         self.KEYUP = False
+        #self.caretaker = Caretaker(Memento(self.board, self.turn))
+
 
     def check_win_condition(self):
         simple_moves, jump_moves = self.board.possible_moves(self.turn)
@@ -44,8 +48,11 @@ class Checkers:
                 if event.type == pygame.MOUSEBUTTONUP:
                     movex, movey = self.get_square_clicked(event.pos[0], event.pos[1])
                     move = self.board.execute_mousepress(movex, movey, self.turn)
-                    if move:
+                    if move:                      
                         self.turn = BLACK if self.turn == WHITE else WHITE
+                        #self.caretaker.add_memento(Memento(self.board, self.turn))
+
+
 
             self.board.draw_board()
             self.clock.tick(self.fps)
